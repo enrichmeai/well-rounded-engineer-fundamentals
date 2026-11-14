@@ -1,0 +1,4 @@
+# Send the build only what it needs. Everything else stays on your laptop.
+*
+!app/app.py
+!app/test_app.py

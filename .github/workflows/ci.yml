@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install test tools
+        run: python -m pip install pytest shellcheck-py
+
+      - name: web
+        working-directory: web
+        run: python -m pytest -v
+
+      - name: networking
+        working-directory: networking
+        run: python -m pytest -v
+
+      - name: linux
+        working-directory: linux
+        run: bash tests/test_logsum.sh
+
+      - name: shellcheck
+        run: shellcheck linux/logsum.sh linux/tests/test_logsum.sh web/demo.sh docker/test-container.sh
+
+      - name: docker (unit tests)
+        working-directory: docker/app
+        run: python -m unittest -v
+
+      - name: docker (build and run the container)
+        run: bash docker/test-container.sh
