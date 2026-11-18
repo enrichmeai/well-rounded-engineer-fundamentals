@@ -16,6 +16,7 @@ links to a folder here, and every folder can be run on a laptop, with no cloud a
 | [`git/`](git/) | Git | [guide](https://enrichmeai.com/well-rounded-engineer/devops/) |
 | [`docker/`](docker/) | Docker | [guide](https://enrichmeai.com/well-rounded-engineer/docker/) |
 | [`concurrency/`](concurrency/) | Concurrency: races, deadlock, optimistic locking, threads vs processes, queues | [guide](https://enrichmeai.com/well-rounded-engineer/concurrency/) |
+| [`cloudcost/`](cloudcost/) | Cloud cost: reading a bill, commitments, schedules, storage classes | [guide](https://enrichmeai.com/well-rounded-engineer/cloudcost/) |
 
 Each folder has its own README: what it shows, how to run it, what to try next, and what to read. Each example has
 tests, and CI runs them on every change, so the code here keeps working.

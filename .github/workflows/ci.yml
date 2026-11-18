@@ -32,6 +32,10 @@ jobs:
         working-directory: concurrency
         run: python -m pytest -v
 
+      - name: cloudcost
+        working-directory: cloudcost
+        run: python -m pytest -v
+
       - name: linux
         working-directory: linux
         run: bash tests/test_logsum.sh
