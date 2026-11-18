@@ -28,7 +28,10 @@ def run(order_a: tuple[str, str], order_b: tuple[str, str], timeout: float = 0.5
                 # Wait until the other thread holds its first lock too (forces the bad timing).
                 both_hold_first.wait()
             except threading.BrokenBarrierError:
-                pass  # the other thread is already waiting on our lock: carry on
+                # With the SAME order, the other thread is blocked waiting for our first lock,
+                # so it never reaches the barrier and the barrier times out. That is expected
+                # and harmless: it is why the same-order run takes a little longer.
+                pass
             if second.acquire(timeout=timeout):
                 second.release()
                 result[name] = f"took {order[0]} then {order[1]}"

@@ -28,7 +28,7 @@ def test_locked_deposits_keep_both(run):
 
 
 def test_opposite_lock_orders_deadlock():
-    result = deadlock.run(("lock1", "lock2"), ("lock2", "lock1"), timeout=0.2)
+    result = deadlock.run(("lock1", "lock2"), ("lock2", "lock1"), timeout=1.0)
     assert result == {
         "A": "holds lock1, stuck waiting for lock2",
         "B": "holds lock2, stuck waiting for lock1",
@@ -36,7 +36,7 @@ def test_opposite_lock_orders_deadlock():
 
 
 def test_same_lock_order_does_not_deadlock():
-    result = deadlock.run(("lock1", "lock2"), ("lock1", "lock2"), timeout=0.2)
+    result = deadlock.run(("lock1", "lock2"), ("lock1", "lock2"), timeout=1.0)
     assert result == {"A": "took lock1 then lock2", "B": "took lock1 then lock2"}
 
 

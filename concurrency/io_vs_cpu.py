@@ -9,8 +9,9 @@ about 0.2 s, because a waiting thread releases the interpreter.
 Part 2 does four chunks of pure arithmetic. In the standard CPython build, the global
 interpreter lock (GIL) lets only one thread run Python code at a time, so four threads take
 about as long as doing the chunks one by one. Four processes, each with its own interpreter,
-can use four CPU cores. (Python 3.13 added an experimental free-threaded build without
-the GIL; on that build the thread timings change. The script prints which build you have.)
+can use four CPU cores. (Python 3.13 added an experimental free-threaded build, a separate
+executable without the GIL; on that build the thread timings change. The script prints
+which build you have.)
 
 Timings depend on your machine, so your numbers will differ; compare the rows, not the values.
 """

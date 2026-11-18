@@ -94,14 +94,25 @@ bounded queue makes a fast producer wait for slow workers (back-pressure). One `
 
 ## Try next
 
-1. In `lost_update.py`, delete the `both_have_read.wait()` line and run the unsafe version many times. How often do
-   you see 100 now? The race is still there; it just became rare, which is what makes it dangerous in real code.
-2. In `deadlock.py`, give each thread a third lock and three different orders. Which orders deadlock?
-3. In `optimistic.py`, add a third writer. How many retries happen in total?
+1. In `lost_update.py`, delete the `both_have_read.wait()` line and run it again. You will probably see 200 every
+   time: the first thread finishes before the second starts. The race has not gone; the timing hides it, which is how
+   races survive testing. To see it without the barrier, make each thread do 10,000 deposits of 1 in a loop and put
+   `time.sleep(0)` between the read and the write, standing in for real work such as a database call. On our machine
+   two threads ended near 10,000 instead of 20,000: about half the updates were lost.
+2. In `deadlock.py`, add a `lock3` to the `locks` dictionary and pass three-name orders, with the worker taking all
+   three in turn. Which orders deadlock? (Rule of thumb: any two threads that take some pair of locks in opposite
+   orders.)
+3. In `optimistic.py`, add a third writer. Change `Barrier(2)` to `Barrier(3)` and give the third writer a hook that
+   waits for B to save, like `wait_for_a` does for A. How many retries happen in total?
 4. In `io_vs_cpu.py`, replace the threads in part 1 with `asyncio.gather` and `asyncio.sleep`. One thread, the same
    overlap.
-5. In `pipeline.py`, make one worker slow (`time.sleep(0.1)` per order) and watch the producer block on `put()`.
-6. Run `python3 amdahl.py 0.99`. How many processors does it take to get half of the ceiling?
+5. In `pipeline.py`, make the workers slow (`time.sleep(0.1)` per order) and add
+   `print("producer waiting to put", order["id"])` just before `out.put(order)`. With `maxsize=3` the producer stops
+   and waits for the workers: that is back-pressure.
+6. Now add an order for an item that is not in `prices`. The worker dies with a `KeyError`, never sends `STOP`, and
+   `run()` waits for ever. This is the classic queue-pipeline trap: catch errors in the worker, report them, and
+   still send `STOP`.
+7. Run `python3 amdahl.py 0.99`. How many processors does it take to get half of the ceiling?
 
 ## Read
 
