@@ -18,6 +18,7 @@ links to a folder here, and every folder can be run on a laptop, with no cloud a
 | [`concurrency/`](concurrency/) | Concurrency: races, deadlock, optimistic locking, threads vs processes, queues | [guide](https://enrichmeai.com/well-rounded-engineer/concurrency/) |
 | [`cloudcost/`](cloudcost/) | Cloud cost: reading a bill, commitments, schedules, storage classes | [guide](https://enrichmeai.com/well-rounded-engineer/cloudcost/) |
 | [`dsa/`](dsa/) | Data structures and algorithms: Big O counted, hash table, heap, graphs, LRU cache, sorting | [guide](https://enrichmeai.com/well-rounded-engineer/dsa/) |
+| [`distsys/`](distsys/) | Distributed systems: retries and idempotency, Lamport clocks, quorums, two-phase commit, simulation testing | [guide](https://enrichmeai.com/well-rounded-engineer/distsys/) |
 
 Each folder has its own README: what it shows, how to run it, what to try next, and what to read. Each example has
 tests, and CI runs them on every change, so the code here keeps working.
