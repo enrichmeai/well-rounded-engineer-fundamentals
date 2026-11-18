@@ -15,7 +15,7 @@ links to a folder here, and every folder can be run on a laptop, with no cloud a
 | [`web/`](web/) | Web fundamentals and HTTP caching | [guide](https://enrichmeai.com/well-rounded-engineer/web/) |
 | [`git/`](git/) | Git | [guide](https://enrichmeai.com/well-rounded-engineer/devops/) |
 | [`docker/`](docker/) | Docker | [guide](https://enrichmeai.com/well-rounded-engineer/docker/) |
-| [`concurrency/`](concurrency/) | Concurrency: races, deadlock, optimistic locking, threads vs processes, queues | [guide](https://enrichmeai.com/well-rounded-engineer/concurrency/) |
+| [`concurrency/`](concurrency/) | Concurrency: races, deadlock, optimistic locking, threads vs processes, queues; in Python and Java | [guide](https://enrichmeai.com/well-rounded-engineer/concurrency/) |
 | [`cloudcost/`](cloudcost/) | Cloud cost: reading a bill, commitments, schedules, storage classes | [guide](https://enrichmeai.com/well-rounded-engineer/cloudcost/) |
 | [`dsa/`](dsa/) | Data structures and algorithms: Big O counted, hash table, heap, graphs, LRU cache, sorting | [guide](https://enrichmeai.com/well-rounded-engineer/dsa/) |
 | [`distsys/`](distsys/) | Distributed systems: retries and idempotency, Lamport clocks, quorums, two-phase commit, simulation testing | [guide](https://enrichmeai.com/well-rounded-engineer/distsys/) |

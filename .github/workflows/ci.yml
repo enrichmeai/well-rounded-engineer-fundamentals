@@ -32,6 +32,15 @@ jobs:
         working-directory: concurrency
         run: python -m pytest -v
 
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: concurrency (Java)
+        working-directory: concurrency/java
+        run: javac -Xlint:all -Werror -d out *.java && java -cp out ConcurrencyTests
+
       - name: cloudcost
         working-directory: cloudcost
         run: python -m pytest -v
