@@ -36,6 +36,10 @@ jobs:
         working-directory: cloudcost
         run: python -m pytest -v
 
+      - name: dsa
+        working-directory: dsa
+        run: python -m pytest -v
+
       - name: linux
         working-directory: linux
         run: bash tests/test_logsum.sh
