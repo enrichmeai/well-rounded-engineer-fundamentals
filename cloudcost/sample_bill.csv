@@ -1,0 +1,14 @@
+ChargePeriodStart,ChargeCategory,ServiceName,ResourceId,Tags,BilledCost
+2026-10-01T00:00:00Z,Usage,Compute,vm-web-1,"{""team"": ""shop"", ""env"": ""prod""}",412.80
+2026-10-01T00:00:00Z,Usage,Compute,vm-web-2,"{""team"": ""shop"", ""env"": ""prod""}",412.80
+2026-10-01T00:00:00Z,Usage,Compute,vm-batch-1,"{""team"": ""data"", ""env"": ""prod""}",298.40
+2026-10-01T00:00:00Z,Usage,Compute,vm-dev-1,"{""team"": ""shop"", ""env"": ""dev""}",206.40
+2026-10-01T00:00:00Z,Usage,Compute,vm-old-test,{},206.40
+2026-10-01T00:00:00Z,Usage,Database,db-orders,"{""team"": ""shop"", ""env"": ""prod""}",620.00
+2026-10-01T00:00:00Z,Usage,Object Storage,bucket-logs,{},184.25
+2026-10-01T00:00:00Z,Usage,Object Storage,bucket-images,"{""team"": ""shop"", ""env"": ""prod""}",96.10
+2026-10-01T00:00:00Z,Usage,Data Transfer,vm-web-1,"{""team"": ""shop"", ""env"": ""prod""}",143.70
+2026-10-01T00:00:00Z,Usage,Warehouse,wh-analytics,"{""team"": ""data""}",388.90
+2026-10-01T00:00:00Z,Purchase,Compute,,{},150.00
+2026-10-01T00:00:00Z,Tax,Compute,,{},45.00
+2026-10-01T00:00:00Z,Credit,Compute,,{},-60.00
