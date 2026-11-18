@@ -28,6 +28,10 @@ jobs:
         working-directory: networking
         run: python -m pytest -v
 
+      - name: concurrency
+        working-directory: concurrency
+        run: python -m pytest -v
+
       - name: linux
         working-directory: linux
         run: bash tests/test_logsum.sh
