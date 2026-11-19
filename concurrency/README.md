@@ -92,6 +92,64 @@ bounded queue makes a fast producer wait for slow workers (back-pressure). One `
 **Amdahl's law.** With a fraction `p` that can run in parallel on `s` processors, the speed-up is
 `1 / ((1 - p) + p / s)`. The serial part sets the ceiling.
 
+## The same examples in Java
+
+[`java/`](java/) holds the same six programs in Java, file for file, printing the same results, so you can read the
+two side by side. Nothing to install but a JDK, version 21 or newer: since Java 11 the `java` command runs a source
+file directly ([JEP 330](https://openjdk.org/jeps/330)), with no build tool in between. From `java/`:
+
+```bash
+java LostUpdate.java
+java Deadlock.java
+java Optimistic.java
+java IoVsCpu.java
+java Pipeline.java
+java Amdahl.java           # or: java Amdahl.java 0.5
+javac -d out *.java && java -cp out ConcurrencyTests
+```
+
+| Python | Java | What changes |
+|---|---|---|
+| `threading.Lock`, `with lock:` | `synchronized (lock) { ... }` | The same idea, built into the language |
+| *(none in the standard library)* | `AtomicInteger.addAndGet` | One indivisible read-add-write, with no lock of your own: `LostUpdate.java` shows it as a third fix |
+| `lock.acquire(timeout=...)` | `ReentrantLock.tryLock(timeout, unit)` | `synchronized` has no timeout, so `Deadlock.java` uses the lock classes |
+| `threading.Barrier`, `threading.Event` | `CyclicBarrier`, `CountDownLatch` | The same jobs: wait for each other; wait for a signal |
+| `@dataclass(frozen=True)` | `record Row(int balance, int version)` | An immutable value |
+| `queue.Queue(maxsize=3)` | `ArrayBlockingQueue<>(3)` | A queue that does its own locking and blocks when full |
+| threads for waiting, processes for arithmetic | threads for both, virtual threads for many waits | Below: the biggest difference |
+
+**Threads and arithmetic: the biggest difference.** The JVM has no global interpreter lock. Each ordinary Java thread
+is an operating-system thread, and several run Java code at the same moment on different cores, so four threads speed
+up arithmetic where four CPython threads did not. Part 3 adds what Python's threads do not have: an operating-system
+thread is costly, so programs cap them with a pool, while a virtual thread (Java 21,
+[JEP 444](https://openjdk.org/jeps/444)) is scheduled by the JVM and parked while it waits, so one per task is cheap.
+Virtual threads make waiting cheaper; they do not make arithmetic faster. One run on the same 4-core machine:
+
+```text
+Java 21, 4 processors
+1. ten waits of 0.2 s (I/O-bound)
+   one after another : 2.00 s
+   ten threads       : 0.20 s
+2. four chunks of arithmetic (CPU-bound)
+   one after another : 0.61 s
+   four threads      : 0.23 s
+3. 10,000 waits of 0.1 s
+   pool of 500 OS threads      : 2.08 s
+   one virtual thread per wait : 0.21 s
+```
+
+The two `arithmetic` rows are not comparable across languages: the Java chunk is a much longer loop, because the JIT
+compiler turns it into machine code that runs it far faster than CPython's interpreter. Compare the rows within each
+language.
+
+The other five programs print exactly what their Python twins print, plus one line from `LostUpdate.java`:
+
+```text
+two deposits of 100, unsafe: 100
+two deposits of 100, locked: 200
+two deposits of 100, atomic: 200
+```
+
 ## Try next
 
 1. In `lost_update.py`, delete the `both_have_read.wait()` line and run it again. You will probably see 200 every
@@ -113,6 +171,12 @@ bounded queue makes a fast producer wait for slow workers (back-pressure). One `
    `run()` waits for ever. This is the classic queue-pipeline trap: catch errors in the worker, report them, and
    still send `STOP`.
 7. Run `python3 amdahl.py 0.99`. How many processors does it take to get half of the ceiling?
+8. In `java/LostUpdate.java`, remove the `synchronized` block but keep the two lines inside it, and run each thread
+   10,000 times in a loop. Unlike the Python try-next, you need no `sleep`: Java threads really run at the same time
+   on different cores, so updates go missing on their own. In five runs on our machine, four ended between 15,241 and
+   19,001 instead of 20,000; one got lucky and reached 20,000, which is why a passing run proves nothing.
+9. In `java/IoVsCpu.java`, give part 3 a pool of 10,000 OS threads instead of 500. Does it start them, how long
+   does it take, and how much memory does the process use while it runs?
 
 ## Read
 
@@ -121,3 +185,7 @@ bounded queue makes a fast producer wait for slow workers (back-pressure). One `
 - Python docs: [`threading`](https://docs.python.org/3/library/threading.html),
   [`queue`](https://docs.python.org/3/library/queue.html),
   [`concurrent.futures`](https://docs.python.org/3/library/concurrent.futures.html).
+- Java docs (21): [`java.util.concurrent`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/package-summary.html),
+  [`ReentrantLock`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/locks/ReentrantLock.html),
+  [JEP 444: Virtual Threads](https://openjdk.org/jeps/444).
+- [How Java threads evolved](https://enrichmeai.com/well-rounded-engineer/javathreads/) in the guide.
