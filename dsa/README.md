@@ -89,6 +89,53 @@ recently used one is always at the back. `get` moves an entry to the front; `put
   4000     3999453    42849
 ```
 
+## The same structures in Java
+
+[`java/`](java/) holds the same six programs in Java, file for file. Five print exactly what their Python twins print;
+`Sorting.java` gets slightly different counts because `java.util.Random(42)` is a different generator from Python's
+`random.Random(42)`, so the "random" arrays differ (the growth is the same). There is a seventh program,
+`HashMapTrees.java`, because Java's own `HashMap` does something Python's `dict` does not. You need a JDK, version 21 or
+newer, and nothing else: the `java` command runs a source file directly ([JEP 330](https://openjdk.org/jeps/330)).
+From `java/`:
+
+```bash
+java BigO.java
+java HashTable.java
+java HashMapTrees.java
+java Heap.java
+java Graph.java
+java Lru.java
+java Sorting.java
+javac -d out *.java && java -cp out DsaTests
+```
+
+| Python | Java | What to notice |
+|---|---|---|
+| returns a tuple `(index, steps)` | returns a `record Found(int index, long steps)` | Java has no tuples; a record is the short way to name one |
+| `(lo + hi) // 2` | `(lo + hi) >>> 1` | Python integers never overflow; a Java `int` does past 2³¹, so `/ 2` can go negative on huge arrays |
+| FNV-1a needs `& 0xFFFFFFFF` | the `int` wraps at 32 bits by itself | but it is signed, so the bucket uses `Integer.remainderUnsigned` |
+| `hash(str)` changes every run | `String.hashCode()` is the same on every run | `"user-999".hashCode()` is always -267689961 ([the formula](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html#hashCode())) |
+| tuples compare themselves | `record Job(...) implements Comparable<Job>` | Java must be told how to order your objects |
+| `dict` keeps insertion order | `HashMap` keeps none; `LinkedHashMap` does | `Graph.java` uses `LinkedHashMap`, or BFS could try neighbours in any order |
+| `heapq`, `deque`, `functools.lru_cache` | `PriorityQueue`, `ArrayDeque`, `LinkedHashMap(16, 0.75f, true)` | `Lru.java` builds the cache by hand, then in five lines with `removeEldestEntry`; the tests check both evict the same keys |
+| `sorted()` is Timsort | `List.sort` is TimSort too | the JDK docs say it "was adapted from Tim Peters's list sort for Python" |
+
+**A bad hash in Java's own HashMap.** `HashTable.java` prints the same three rows as Python, plus Java's
+`String.hashCode` (longest bucket 3). But a real `HashMap` defends itself: when one bucket reaches 8 entries
+(`TREEIFY_THRESHOLD` in the [JDK source](https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/java.base/share/classes/java/util/HashMap.java))
+and the table has at least 64 buckets, the bucket becomes a red-black tree. A tree is only fast if the keys can be
+ordered, so making your key `Comparable` matters. One run:
+
+```text
+5,000 lookups in a HashMap of 5,000 keys
+  good hashCode                     :      0.2 ms
+  every hash 42, keys Comparable    :      3.0 ms
+  every hash 42, keys not Comparable:     74.5 ms
+```
+
+The lesson for your own classes: a `hashCode()` that spreads keys out matters most; a natural order (`Comparable`) is
+the safety net.
+
 ## Try next
 
 1. In `big_o.py`, search for the first item instead of a missing one. Which counts change, and why is that the
@@ -100,6 +147,12 @@ recently used one is always at the back. `get` moves an entry to the front; `put
    never negative?
 5. Replace `LRUCache` with `functools.lru_cache` on a slow function and compare `cache_info()` with `evicted`.
 6. Run `sorting.py` on input that is already sorted. Which algorithm wins now?
+7. In `java/HashMapTrees.java`, raise `n` to 20,000 (4× more keys). The first two rows grow about 4×. O(n) per lookup
+   predicts the last row grows 16× (4× more lookups, each searching a 4× longer tree); on our machine it grew from
+   74.5 ms to 2,816.8 ms, about 38×, because the longer tree no longer fits in the CPU's caches. Big O is the floor of
+   the bad news, not the ceiling.
+8. In `java/BigO.java`, change `>>> 1` to `/ 2` and work out by hand what `(lo + hi) / 2` gives when `lo` and `hi`
+   are both 1,500,000,000. (Java's own library had this overflow in its binary search for more than nine years: see Read.)
 
 ## Read
 
@@ -108,3 +161,8 @@ recently used one is always at the back. `get` moves an entry to the front; `put
   [`collections.deque`](https://docs.python.org/3/library/collections.html#collections.deque),
   [`functools.lru_cache`](https://docs.python.org/3/library/functools.html#functools.lru_cache).
 - [Fowler–Noll–Vo hash function](https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function).
+- Java docs (21): [`HashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html),
+  [`LinkedHashMap`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/LinkedHashMap.html),
+  [`PriorityQueue`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/PriorityQueue.html).
+- [Binary search: implementation issues](https://en.wikipedia.org/wiki/Binary_search#Implementation_issues),
+  including the overflow found in the JDK.

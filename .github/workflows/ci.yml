@@ -49,6 +49,10 @@ jobs:
         working-directory: dsa
         run: python -m pytest -v
 
+      - name: dsa (Java)
+        working-directory: dsa/java
+        run: javac -Xlint:all -Werror -d out *.java && java -cp out DsaTests
+
       - name: distsys
         working-directory: distsys
         run: python -m pytest -v
