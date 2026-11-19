@@ -52,6 +52,17 @@ table is more than 75% full it doubles its buckets and re-inserts everything, so
 is FNV-1a, written out in the file, because Python randomises its built-in string hashes each time it starts, and the
 output would change from run to run.
 
+One lookup, step by step, with the real numbers from `hash_table.py`: the key becomes a number, the number picks one of 2,048 buckets, and only that bucket is searched.
+
+```mermaid
+flowchart TD
+    K["key: user-999"] -- FNV-1a --> N["3085333042"]
+    N -- "mod 2048" --> I["bucket 562"]
+    I --> B["bucket 562 holds 2 pairs"]
+    B --> C1["1. user-616? no"]
+    C1 --> C2["2. user-999? yes: 999"]
+```
+
 ```text
 good hash : 1000 keys, 2048 buckets after 8 resizes, longest bucket 4, get('user-999') took 2 comparisons
 bad hash  : 1000 keys, 2048 buckets, longest bucket 1000, get('user-999') took 1000 comparisons
@@ -61,6 +72,16 @@ A hash function that sends every key to the same bucket turns every lookup into 
 
 **A heap.** A list read as a tree: the children of index `i` are at `2i+1` and `2i+2`, and each parent is no larger
 than its children, so the smallest item is always first. Push and pop each move one item up or down one path, O(log n).
+
+The heap after the five pushes in `heap.py`, drawn as the tree the list stands for. Each parent is no larger than its children, so the smallest job is always at index 0.
+
+```mermaid
+flowchart TB
+    N0["index 0: 1, page on-call"] --> N1["index 1: 1, restart db"]
+    N0 --> N2["index 2: 2, retry payment"]
+    N1 --> N3["index 3: 5, tidy logs"]
+    N1 --> N4["index 4: 3, send report"]
+```
 
 ```text
 pop order: [(1, 'page on-call'), (1, 'restart db'), (2, 'retry payment'), (3, 'send report'), (5, 'tidy logs')]
@@ -76,8 +97,41 @@ fewest calls   gateway -> ledger: gateway -> ledger
 lowest latency gateway -> ledger: gateway -> orders -> payments -> ledger (65 ms)
 ```
 
+The map in `graph.py`, latency in ms on each call. Breadth-first search takes the orange route (1 call, 200 ms). Dijkstra takes the green one (3 calls, 20 + 30 + 15 = 65 ms).
+
+```mermaid
+flowchart LR
+    gateway -- 5 --> auth
+    auth -- 5 --> users
+    gateway -- 20 --> orders
+    gateway -- 40 --> search
+    gateway -- 200 --> ledger
+    orders -- 30 --> payments
+    orders -- 10 --> inventory
+    search -- 5 --> inventory
+    payments -- 15 --> ledger
+    inventory -- 50 --> ledger
+    linkStyle 4 stroke:#d97706,stroke-width:3px
+    linkStyle 2,5,8 stroke:#16a34a,stroke-width:3px
+```
+
 **An LRU cache.** A dict finds an entry in O(1); a doubly linked list keeps the entries in order of use, so the least
 recently used one is always at the back. `get` moves an entry to the front; `put` evicts from the back when full.
+
+Two steps from `lru.py` with a capacity of 3. The dict points straight at each node; the list keeps the order of use, newest at the front.
+
+```mermaid
+flowchart TB
+    subgraph s1["1. get a: a moves to the front"]
+        direction LR
+        H1["head"] <--> A1["a"] <--> C1["c"] <--> B1["b"] <--> T1["tail"]
+    end
+    subgraph s2["2. put d, cache full: b, at the back, is evicted"]
+        direction LR
+        H2["head"] <--> D2["d"] <--> A2["a"] <--> C2["c"] <--> T2["tail"]
+    end
+    s1 --> s2
+```
 
 **Sorting.** Comparisons on the same random lists (a fixed seed, so the numbers repeat):
 
@@ -87,6 +141,18 @@ recently used one is always at the back. `get` moves an entry to the front; `put
    100        2464      537
   1000      244224     8697
   4000     3999453    42849
+```
+
+Merge sort on four numbers. Split until each piece has one item, then merge pairs, comparing the front of each half. It takes 5 comparisons, which is `merge_sort([5, 2, 4, 1])`'s count.
+
+```mermaid
+flowchart TB
+    A["5 2 4 1"] -- split --> B["5 2"]
+    A -- split --> C["4 1"]
+    B -- "merge: 1 comparison" --> D["2 5"]
+    C -- "merge: 1 comparison" --> E["1 4"]
+    D -- "merge: 3 comparisons" --> F["1 2 4 5"]
+    E --> F
 ```
 
 ## The same structures in Java

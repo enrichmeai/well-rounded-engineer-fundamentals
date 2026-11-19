@@ -40,6 +40,33 @@ python3 -m pytest
 then each writes `0 + 100`. The second write overwrites the first. The lock version makes read-and-write one step
 that only one thread can be inside at a time.
 
+Read it top to bottom. Without a lock (steps 1 to 6), both threads read 0 before either writes. With a lock (steps 7 to 13), B has to wait until A has finished.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Thread A
+    participant M as balance
+    participant B as Thread B
+    Note over A,B: No lock
+    A->>M: read
+    M-->>A: 0
+    B->>M: read
+    M-->>B: 0
+    A->>M: write 0 + 100
+    B->>M: write 0 + 100
+    Note over M: balance = 100, one deposit lost
+    Note over A,B: With a lock
+    A->>M: take the lock, read
+    M-->>A: 0
+    B--xM: wants the lock: waits
+    A->>M: write 100, release the lock
+    B->>M: take the lock, read
+    M-->>B: 100
+    B->>M: write 200, release the lock
+    Note over M: balance = 200
+```
+
 ```text
 two deposits of 100, unsafe: 100
 two deposits of 100, locked: 200
@@ -49,6 +76,25 @@ two deposits of 100, locked: 200
 A deadlock needs all four of Coffman's conditions: mutual exclusion, hold and wait, no preemption, and circular wait.
 Taking the locks in one agreed order removes the circular wait. The demo asks for the second lock with a timeout,
 so instead of hanging your terminal it reports who was stuck.
+
+Follow the arrows with opposite orders: A waits for lock 2, which B holds; B waits for lock 1, which A holds. The arrows come back to where they started: a cycle, so neither thread can move.
+
+```mermaid
+flowchart LR
+    A["Thread A"] -- "waits for" --> L2(("lock 2"))
+    L2 -- "held by" --> B["Thread B"]
+    B -- "waits for" --> L1(("lock 1"))
+    L1 -- "held by" --> A
+```
+
+With one order, both threads ask for lock 1 first. B waits for A, but A is not waiting for B, so there is no cycle: A finishes, then B goes.
+
+```mermaid
+flowchart LR
+    B["Thread B"] -- "waits for" --> L1(("lock 1"))
+    L1 -- "held by" --> A["Thread A"]
+    A -- "takes next" --> L2(("lock 2: free"))
+```
 
 ```text
 opposite orders (A: 1 then 2, B: 2 then 1):
@@ -62,6 +108,28 @@ same order (both: 1 then 2):
 **Optimistic concurrency.** No lock is held while working. The save succeeds only if the version is still the one
 you read, which is what `UPDATE ... WHERE id = ? AND version = ?` does in a database. A conflict is not an error: you
 read again and retry.
+
+Both writers read version 0. A saves first and the version moves to 1, so B's save, which says "only if still version 0", is refused. B reads again and saves on top of A's change.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Writer A
+    participant S as Store
+    participant B as Writer B
+    A->>S: read
+    S-->>A: balance 0, version 0
+    B->>S: read
+    S-->>B: balance 0, version 0
+    A->>S: save 100 if version is 0
+    S-->>A: saved, now version 1
+    B->>S: save 100 if version is 0
+    S-->>B: conflict: it is version 1
+    B->>S: read again
+    S-->>B: balance 100, version 1
+    B->>S: save 200 if version is 1
+    S-->>B: saved, now version 2
+```
 
 ```text
 A: attempt 1 saved 0 -> 100 (version 0 -> 1)
@@ -86,8 +154,38 @@ Python 3.13.18, GIL enabled: True
    four processes    : 0.16 s
 ```
 
+Why the rows differ: in standard CPython, threads take turns holding one lock (the GIL), so only one runs Python code at a time. Processes each have their own interpreter and their own GIL, so they use separate cores.
+
+```mermaid
+flowchart TB
+    subgraph threads["Four threads, one process"]
+        direction TB
+        T1["thread 1"] & T2["thread 2"] & T3["thread 3"] & T4["thread 4"] --> GIL{{"the GIL: one thread runs Python at a time"}} --> C1["1 core busy"]
+    end
+    subgraph procs["Four processes"]
+        direction TB
+        P1["process 1"] --> K1["core 1"]
+        P2["process 2"] --> K2["core 2"]
+        P3["process 3"] --> K3["core 3"]
+        P4["process 4"] --> K4["core 4"]
+    end
+```
+
 **Pipeline.** Each thread owns its data and passes results on through a `queue.Queue`, which does its own locking. A
 bounded queue makes a fast producer wait for slow workers (back-pressure). One `STOP` value per worker shuts it down.
+
+Data moves left to right and no thread touches another's. The first queue holds at most 3 orders, so a fast producer waits for the workers: back-pressure.
+
+```mermaid
+flowchart LR
+    P["producer"] -- "put: waits while full" --> Q1[["todo queue, holds 3"]]
+    Q1 -- take --> W1["worker 1"]
+    Q1 -- take --> W2["worker 2"]
+    W1 -- result --> Q2[["done queue"]]
+    W2 -- result --> Q2
+    Q2 --> C["collector"]
+    P -. "finally: one STOP per worker" .-> Q1
+```
 
 **Amdahl's law.** With a fraction `p` that can run in parallel on `s` processors, the speed-up is
 `1 / ((1 - p) + p / s)`. The serial part sets the ceiling.
@@ -136,6 +234,20 @@ Java 21, 4 processors
 3. 10,000 waits of 0.1 s
    pool of 500 OS threads      : 2.08 s
    one virtual thread per wait : 0.21 s
+```
+
+Part 3, drawn. An OS thread is costly, so a pool caps them and the rest of the work queues. Virtual threads are cheap: the JVM runs them on a few OS threads and parks one while it waits, so all 10,000 can wait at once.
+
+```mermaid
+flowchart TB
+    subgraph pool["Pool of 500 OS threads"]
+        direction TB
+        Q["9,500 waits queued"] --> OS1["500 OS threads, each busy waiting"]
+    end
+    subgraph virt["One virtual thread per wait"]
+        direction TB
+        V["10,000 virtual threads"] -- "a waiting one is parked" --> CAR["a few carrier OS threads, one per core"]
+    end
 ```
 
 The two `arithmetic` rows are not comparable across languages: the Java chunk is a much longer loop, because the JIT

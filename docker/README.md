@@ -30,6 +30,26 @@ for healthy, call it, confirm it is not root):
 bash test-container.sh               # set PORT=9090 first if 8080 is taken
 ```
 
+What `docker build` and `docker run` do with this folder. The tests run inside the build: if one fails, there is no image to run.
+
+```mermaid
+flowchart TD
+    CTX["this folder"] -- ".dockerignore lets in 2 files" --> T1
+    subgraph test["stage 1: test"]
+        T1["COPY app/"] --> T2["RUN the unit tests"]
+    end
+    T2 -- "a test fails" --> STOP["build stops, no image"]
+    T2 -- "all pass" --> R1
+    subgraph runtime["stage 2: runtime"]
+        R1["fresh slim base"] --> R2["COPY --from=test app.py"] --> R3["USER app, uid 10001"]
+    end
+    R3 --> IMG[("image")]
+    IMG --> RUN["docker run"]
+    RUN --> HC{"HEALTHCHECK every 10 s"}
+    HC -- answers --> OK["healthy"]
+    HC -- "3 failures in a row" --> BAD["unhealthy"]
+```
+
 ## Why each choice
 
 | In the Dockerfile | Why |
