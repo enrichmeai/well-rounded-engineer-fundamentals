@@ -39,9 +39,44 @@ NaivePayments       customer owed 2000, charged 2900 (40 requests sent for 20 or
 IdempotentPayments  customer owed 2000, charged 2000 (40 requests sent for 20 orders)
 ```
 
+One order, step by step. The charge succeeds, but its reply is lost, so the client cannot tell whether it worked and sends the same request again.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant S as Payment service
+    C->>S: charge 100, key order-7
+    S->>S: charge the card, remember order-7
+    S--xC: reply lost on the network
+    Note over C: timeout: was the request lost, or the reply?
+    C->>S: charge 100, key order-7 (retry)
+    alt naive service
+        S->>S: charge the card again: 200 taken
+    else idempotent service
+        S->>S: order-7 seen before: no new charge
+    end
+    S-->>C: done
+```
+
 **Clocks.** B's clock runs 40 ms behind A's, and C's 15 ms ahead. Sorted by wall clock, the logs put B's reply before
 A's request. A Lamport clock is a counter: add one for each local event, send it with every message, and on receipt
 set it to the larger of your own and the sender's, plus one. If one event caused another, its counter is smaller.
+
+The run in `lamport.py`. B's clock is 40 ms slow, so its wall-clock times come before A's, yet B cannot reply before A asks. The Lamport counter L follows the messages, so it gets the order right.
+
+```mermaid
+sequenceDiagram
+    participant A as A, clock right
+    participant B as B, 40 ms slow
+    participant C as C, 15 ms fast
+    A->>B: request: wall 0 ms, L=1
+    Note over B: receives: wall -38 ms, L=2
+    B->>A: reply: wall -38 ms, L=3
+    Note over A: receives: wall 10 ms, L=4
+    A->>C: notice: wall 10 ms, L=5
+    Note over C: receives: wall 29 ms, L=6
+```
 
 ```text
 sorted by wall clock (what the logs say):
@@ -65,6 +100,19 @@ keeps the highest version among the replicas it asks. When W + R > N, every read
 write set, so it sees the newest version. Asking for all three during the partition is the other side of the trade:
 consistent, but the write is refused.
 
+N = 3, W = 2, R = 2. The write reaches a and b while c is cut off. Any two replicas a read asks must include at least one of a and b, so the read always sees version 2.
+
+```mermaid
+flowchart LR
+    W["write version 2, needs W = 2"] --> RA[("a: version 2")]
+    W --> RB[("b: version 2")]
+    W -. "c is cut off" .-x RC[("c: version 1")]
+    R["read, needs R = 2"] --> RB
+    R --> RC
+    RB --> K["keep the highest version: 2"]
+    RC --> K
+```
+
 ```text
 N=3 W=1 R=1  W+R<=N  stale when reading b, c
 N=3 W=2 R=1  W+R<=N  stale when reading c
@@ -80,6 +128,29 @@ waits. If the coordinator crashes after collecting the votes, neither bank can s
 both vote yes                       : {'bank-1': 'committed', 'bank-2': 'committed'}
 bank-2 votes no                     : {'bank-1': 'aborted', 'bank-2': 'aborted'}
 coordinator crashes after the votes : {'bank-1': 'prepared', 'bank-2': 'prepared'} <- both stuck holding their locks
+```
+
+Phase 1 collects votes, phase 2 sends the decision. A bank that voted yes has promised to obey, so if the decision never comes it can only wait, holding its locks.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant K as Coordinator
+    participant B1 as bank-1
+    participant B2 as bank-2
+    K->>B1: prepare
+    K->>B2: prepare
+    B1-->>K: yes, locks held
+    B2-->>K: yes, locks held
+    alt every vote is yes
+        K->>B1: commit
+        K->>B2: commit
+    else a bank votes no
+        K->>B1: abort
+        K->>B2: abort
+    else coordinator crashes after the votes
+        Note over B1,B2: both prepared: neither may commit or abort alone, locks stay held
+    end
 ```
 
 **Deterministic simulation testing.** A client sets a key to 1, then to 2. The network occasionally duplicates a
@@ -102,7 +173,32 @@ replaying it again gives the identical log: True
 fixed store: invariant broken in 0 of 1000 seeds
 ```
 
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Store, last write wins
+    C->>S: t=2 set value=1, version 1
+    S-->>C: t=3 ack version 1
+    C->>S: t=8 set value=2, version 2
+    S-->>C: t=16 ack version 2
+    Note over C,S: the network had duplicated the first message and delayed the copy
+    C->>S: t=24 set value=1, version 1 (the late duplicate)
+    Note over S: last write wins: value goes back to 1, invariant broken
+```
+
 At t=24 the delayed duplicate of the first write arrives, and the buggy store goes back to 1.
+
+Above: the search loop in `dst.py`. Below: the failing schedule it found, seed 15, message by message.
+
+```mermaid
+flowchart TD
+    S["next seed, 0 to 999"] --> N["network with that seed: same delays, drops, duplicates every time"]
+    N --> R["run the client and the store"]
+    R --> I{"version 2 acked, so value is 2?"}
+    I -- yes --> S
+    I -- "no: 5 of 1,000 seeds" --> F["print the seed: 15"]
+    F --> P["replay seed 15: the identical log"]
+```
 
 ## Try next
 

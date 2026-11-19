@@ -4,6 +4,18 @@ A cloud bill is usage multiplied by price, so there are two ways to lower it: us
 These four small tools do the sums behind the common decisions, on a laptop, with no cloud account. Every price is an
 input you can see and change; nothing is looked up behind your back. Standard library only.
 
+Where each tool fits. First find who owns the spend, then pull one of the two levers.
+
+```mermaid
+flowchart LR
+    BILL["cost = usage x price"] --> WHO["who owns it? bill.py"]
+    WHO --> LESS["use less"]
+    WHO --> CHEAP["pay less per unit"]
+    LESS --> SCH["switch off out of hours: schedule.py"]
+    LESS --> ST["keep data in the right class: storage_class.py"]
+    CHEAP --> CP["commit to the base you always use: commit_plan.py"]
+```
+
 | File | The question | What you will see |
 |---|---|---|
 | [`bill.py`](bill.py) | Where does the money go, and who owns it? | Totals by service, by owner tag, the untagged share, the top resources |

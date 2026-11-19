@@ -6,6 +6,24 @@ fingerprint back in `If-None-Match`. If the page has not changed, the server ans
 with no body, and the browser reuses the copy it already has. This folder is a tiny Python server, standard
 library only, that does exactly that, so you can watch it happen with `curl` or your browser's developer tools.
 
+What `server.py` and the browser say to each other. The page is kept for 60 seconds; after that, the browser asks "has it changed?" and gets either an empty 304 or the new page.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant S as server.py
+    B->>S: GET /
+    S-->>B: 200 OK, the page, ETag, Cache-Control max-age=60
+    Note over B: for 60 s: reuse the copy, send nothing
+    B->>S: GET /, If-None-Match: the ETag
+    alt page unchanged
+        S-->>B: 304 Not Modified, no body: reuse the copy
+    else page changed
+        S-->>B: 200 OK, the new page, a new ETag
+    end
+```
+
 ## Run it
 
 You need Python 3.10 or newer. From this folder:

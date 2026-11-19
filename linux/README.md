@@ -6,6 +6,22 @@ job, summarising a web server access log, and shows the habits that make a scrip
 kind of failure, a `trap` that cleans up its temporary files however it ends, and messages on stderr so the
 report on stdout can be piped somewhere clean.
 
+The path through `logsum.sh`. Each way out has its own exit code, and the `trap` deletes the temporary directory whichever way the script ends.
+
+```mermaid
+flowchart TD
+    S(["./logsum.sh -n 3 access.log"]) --> O{"valid options and exactly one file?"}
+    O -- no --> X2["exit 2: usage"]
+    O -- yes --> F{"can the file be read?"}
+    F -- no --> X3["exit 3"]
+    F -- yes --> T["make a temporary directory"]
+    T --> P["keep only lines that look like an access log"]
+    P --> A{"any lines left?"}
+    A -- no --> X4["exit 4"]
+    A -- yes --> R["report on stdout: totals, by status, top paths"]
+    R --> X0["exit 0"]
+```
+
 ## Run it
 
 You need bash (Linux, macOS, or WSL on Windows). From this folder:

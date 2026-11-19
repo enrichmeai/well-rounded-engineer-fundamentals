@@ -5,6 +5,23 @@ into an IP address (a **DNS** lookup). Then a **TCP** connection is opened to th
 443 for HTTPS, with a three-way handshake. Each step takes time, and each can fail in its own way. `probe.py`
 does just those two steps, times them, and tells you which one failed. It sends no data. Standard library only.
 
+The two steps `probe.py` times. A DNS lookup turns the name into addresses; the TCP handshake opens a connection. Then it closes without sending any data.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as probe.py
+    participant D as DNS resolver
+    participant S as example.com, port 443
+    P->>D: address of example.com?
+    D-->>P: one or more IP addresses
+    Note over P: DNS time measured
+    P->>S: SYN
+    S-->>P: SYN-ACK
+    P->>S: ACK
+    Note over P: TCP connect time measured, then close
+```
+
 ## Run it
 
 You need Python 3.10 or newer. From this folder:
@@ -17,6 +34,17 @@ python3 probe.py no-such-name.invalid 80
 
 The exit code tells you which step failed (`echo $?` straight after a run): `0` connected, `1` the name resolved
 but nothing accepted the connection, `2` the name did not resolve.
+
+Which step failed decides the exit code.
+
+```mermaid
+flowchart LR
+    S(["probe.py name port"]) --> D{"does the name resolve?"}
+    D -- no --> E2["exit 2"]
+    D -- yes --> T{"is the connection accepted?"}
+    T -- "no: refused at once, or silent until the timeout" --> E1["exit 1"]
+    T -- yes --> E0["exit 0"]
+```
 
 Run the tests. They use only your own machine (localhost), so they work offline:
 
